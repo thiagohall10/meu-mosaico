@@ -42,9 +42,9 @@ function adicionarLive() {
         finalUrl = `https://www.youtube-nocookie.com/embed/${id}?autoplay=1`;
     } 
     // TWITCH (Corrigido para seu domínio)
-    else if (url.includes("twitch.tv")) {
+   else if (url.includes("twitch.tv")) {
         let canal = url.split("/").pop();
-        finalUrl = `https://player.twitch.tv/?channel=${canal}&parent=thiagohall.github.io`;
+    finalUrl = 'https://www.google.com/search?q=https://player.twitch.tv/%3Fchannel%3D${canal}&parent=thiagohall.github.io';
     }
     // KICK
     else if (url.includes("kick.com")) {
