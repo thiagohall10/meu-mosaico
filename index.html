@@ -2,54 +2,51 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Mosaico de Lives - Versão Pro</title>
+    <title>Mosaico de Lives - Final Pro</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #0b0b0b; color: white; margin: 0; padding: 0; }
-        .header { background: #1a1a1a; padding: 15px; display: flex; gap: 10px; position: sticky; top: 0; z-index: 999; border-bottom: 2px solid #333; align-items: center; }
-        input[type="text"] { flex-grow: 1; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #000; color: #fff; }
-        button { padding: 10px 20px; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .header { background: #1a1a1a; padding: 15px; display: flex; gap: 10px; position: sticky; top: 0; z-index: 999; border-bottom: 2px solid #333; }
+        input { flex-grow: 1; padding: 12px; border-radius: 5px; border: 1px solid #444; background: #000; color: #fff; }
+        button { padding: 10px 20px; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; }
         .btn-add { background: #9146ff; }
         .btn-add:hover { background: #772ce8; }
         .btn-clear { background: #ff4c4c; }
         .btn-clear:hover { background: #cc3333; }
         
         #container { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 15px; padding: 15px; }
-        .video-box { position: relative; background: #000; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #222; }
-        .iframe-container { width: 100%; aspect-ratio: 16 / 9; background: #000; }
+        .video-box { position: relative; background: #000; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .iframe-wrapper { position: relative; width: 100%; aspect-ratio: 16 / 9; }
         iframe { width: 100%; height: 100%; border: none; }
-        
         .btn-fechar { position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; z-index: 10; font-weight: bold; }
-        .btn-fechar:hover { background: #ff0000; }
-
-        /* Barra de Controle Inferior (Volume) */
-        .controls-bar { background: #141414; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; }
-        .controls-bar label { font-size: 12px; color: #aaa; font-weight: bold; }
-        .volume-slider { flex-grow: 1; accent-color: #9146ff; cursor: pointer; }
+        
+        /* Controles inferiores de volume */
+        .volume-box { background: #141414; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; }
+        .volume-box label { font-size: 11px; color: #aaa; font-weight: bold; }
+        .vol-slider { flex-grow: 1; accent-color: #9146ff; cursor: pointer; height: 6px; }
     </style>
-    <!-- Script necessário para controlar o volume do YouTube individualmente -->
+    <!-- API para controle de volume do YouTube -->
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
 
 <div class="header">
     <input type="text" id="urlInput" placeholder="Cole o link aqui (YouTube, Twitch ou Kick)...">
-    <button class="btn-add" onclick="adicionarLiveBotao()">ADICIONAR AO MOSAICO</button>
+    <button class="btn-add" onclick="adicionarLive()">ADICIONAR AO MOSAICO</button>
     <button class="btn-clear" onclick="limparTudo()">LIMPAR TUDO</button>
 </div>
 
 <div id="container"></div>
 
 <script>
-// Lista para salvar as URLs das lives favoritadas no navegador
 let livesSalvas = JSON.parse(localStorage.getItem('mosaico_lives')) || [];
-let ytPlayers = {}; // Guarda as instâncias dos players do YouTube para controlar o volume
+let ytPlayers = {}; 
 
-// Carrega as lives salvas automaticamente assim que a página abre
 window.onload = function() {
+    // Carrega os favoritos salvos automaticamente
     livesSalvas.forEach(url => criarElementoLive(url, false));
 };
 
-function adicionarLiveBotao() {
+function adicionarLive() {
     const input = document.getElementById('urlInput');
     let url = input.value.trim();
     if(!url) return;
@@ -64,55 +61,49 @@ function criarElementoLive(url, salvar) {
     let tipo = "";
     let idYt = "";
 
-    // Identificação de Plataforma e extração de IDs
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
         tipo = "youtube";
         if(url.includes("v=")) idYt = url.split("v=")[1].split("&")[0];
         else if(url.includes("live/")) idYt = url.split("live/")[1].split("?")[0];
         else idYt = url.split("/").pop();
-        // Habilita a API do YouTube para podermos mexer no volume via código
         finalUrl = `https://www.youtube-nocookie.com/embed/${idYt}?enablejsapi=1&autoplay=1`;
     } 
     else if (url.includes("twitch.tv")) {
         tipo = "twitch";
         let canal = url.split("/").pop();
-        finalUrl = "https://player.twitch.tv/?channel=" + canal + "&parent=thiagohall10.github.io";
+        finalUrl = "https://player.twitch.tv/?channel=" + canal + "&parent=thiagohall10.github.io&autoplay=true";
     }
     else if (url.includes("kick.com")) {
         tipo = "kick";
         let canal = url.split("/").pop();
-        finalUrl = `https://player.kick.com/${canal}`;
+        // Novo formato de URL de embed da Kick para evitar o erro de configuração
+        finalUrl = `https://kick.com/embed/${canal}`;
     }
 
     if (!finalUrl) return;
 
-    // Se a live for nova, adiciona na lista e salva no localStorage
     if (salvar && !livesSalvas.includes(url)) {
         livesSalvas.push(url);
         localStorage.setItem('mosaico_lives', JSON.stringify(livesSalvas));
     }
 
-    // Cria o card da live
     const item = document.createElement('div');
     item.className = 'video-box';
-    
-    // ID único para controle do volume do YouTube
-    const iframeId = 'yt-' + Math.random().toString(36).substr(2, 9);
+    const iframeId = 'player-' + Math.random().toString(36).substr(2, 9);
 
     item.innerHTML = `
-        <button class="btn-fechar" onclick="removerLive('${url}', this.parentElement)">X</button>
-        <div class="iframe-container">
+        <div class="iframe-wrapper">
+            <button class="btn-fechar" onclick="removerLive('${url}', this.parentElement.parentElement)">X</button>
             <iframe id="${iframeId}" src="${finalUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>
         </div>
-        <div class="controls-bar">
-            <label>🔊 VOLUME:</label>
-            <input type="range" class="volume-slider" min="0" max="100" value="50" oninput="controlarVolume('${tipo}', '${iframeId}', this.value)">
+        <div class="volume-box">
+            <label>VOLUME:</label>
+            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolume('${tipo}', '${iframeId}', this.value)">
         </div>
     `;
     
     container.appendChild(item);
 
-    // Se for do YouTube, precisamos inicializar o player da API para o volume funcionar
     if (tipo === "youtube") {
         setTimeout(() => {
             ytPlayers[iframeId] = new YT.Player(iframeId, {
@@ -120,30 +111,25 @@ function criarElementoLive(url, salvar) {
                     'onReady': (event) => { event.target.setVolume(50); }
                 }
             });
-        }, 1000);
+        }, 1200);
     }
 }
 
-// Função para controlar o volume individual de cada tela
-function controlarVolume(tipo, id, valor) {
+function ajustarVolume(tipo, id, valor) {
     if (tipo === "youtube" && ytPlayers[id] && typeof ytPlayers[id].setVolume === "function") {
         ytPlayers[id].setVolume(valor);
     }
-    // Nota: Players de Twitch/Kick embutidos possuem restrições de segurança do navegador (CORS) 
-    // que impedem o controle de volume externo direto via JavaScript sem SDKs complexos autenticados,
-    // mas o controle nativo do próprio player nas telas deles continua disponível se o usuário clicar.
+    // Nota: Para Twitch e Kick, o controle individual fino é feito diretamente no ícone de som dentro do player de vídeo.
 }
 
-// Remove uma live específica do mosaico e limpa do banco de dados salvos
 function removerLive(url, elemento) {
     elemento.remove();
     livesSalvas = livesSalvas.filter(item => item !== url);
     localStorage.setItem('mosaico_lives', JSON.stringify(livesSalvas));
 }
 
-// Apaga todas as lives da tela e limpa a memória para começar do zero
 function limparTudo() {
-    if (confirm("Tem certeza que deseja limpar todo o mosaico e apagar os favoritos?")) {
+    if (confirm("Deseja fechar todas as lives e limpar os favoritos?")) {
         document.getElementById('container').innerHTML = "";
         livesSalvas = [];
         ytPlayers = {};
