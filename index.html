@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Mosaico de Lives - Som Total</title>
+    <title>Mosaico de Lives - Final Pro</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #0b0b0b; color: white; margin: 0; padding: 0; }
         .header { background: #1a1a1a; padding: 15px; display: flex; gap: 10px; position: sticky; top: 0; z-index: 999; border-bottom: 2px solid #333; }
@@ -19,10 +19,13 @@
         iframe { width: 100%; height: 100%; border: none; }
         .btn-fechar { position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; z-index: 10; font-weight: bold; }
         
-        /* Barra de volume unificada para TODAS as plataformas */
+        /* Barra de volume unificada e visível em todos os cards */
         .volume-box { background: #141414; padding: 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; }
         .volume-box label { font-size: 11px; color: #aaa; font-weight: bold; letter-spacing: 1px; }
         .vol-slider { flex-grow: 1; accent-color: #9146ff; cursor: pointer; height: 6px; }
+
+        /* Notificação rápida de ajuda */
+        .audio-hint { position: absolute; bottom: 50px; left: 50%; transform: translateX(-25%); background: rgba(145, 70, 255, 0.95); color: white; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; display: none; z-index: 99; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: none; }
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
@@ -39,7 +42,6 @@
 <script>
 let livesSalvas = JSON.parse(localStorage.getItem('mosaico_lives')) || [];
 let ytPlayers = {}; 
-let audioContexts = {}; // Guarda os gerenciadores de áudio da Kick e Twitch
 
 window.onload = function() {
     livesSalvas.forEach(url => criarElementoLive(url, false));
@@ -91,15 +93,17 @@ function criarElementoLive(url, salvar) {
     const item = document.createElement('div');
     item.className = 'video-box';
     const iframeId = 'player-' + Math.random().toString(36).substr(2, 9);
+    const hintId = 'hint-' + iframeId;
 
     item.innerHTML = `
         <div class="iframe-wrapper">
             <button class="btn-fechar" onclick="removerLive('${url}', this.parentElement.parentElement)">X</button>
             <iframe id="${iframeId}" src="${finalUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+            <div id="${hintId}" class="audio-hint">Clique no vídeo e use as setas do teclado (⬆/⬇) para o som!</div>
         </div>
         <div class="volume-box">
             <label>VOLUME:</label>
-            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolumeGeral('${tipo}', '${iframeId}', this.value)">
+            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="controlarAudio('${tipo}', '${iframeId}', '${hintId}', this.value)">
         </div>
     `;
     
@@ -113,40 +117,22 @@ function criarElementoLive(url, salvar) {
                 }
             });
         }, 1200);
-    } else {
-        // Inicializa o controle de áudio direto para o elemento de Iframe da Kick/Twitch
-        setTimeout(() => {
-            try {
-                const iframe = document.getElementById(iframeId);
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                const audioCtx = new AudioContext();
-                const source = audioCtx.createMediaElementSource(iframe);
-                const gainNode = audioCtx.createGain();
-                
-                gainNode.gain.value = 0.5; // Começa em 50%
-                source.connect(gainNode);
-                gainNode.connect(audioCtx.destination);
-                
-                audioContexts[iframeId] = gainNode;
-            } catch (e) {
-                console.log("Aguardando interação do usuário para ativar áudio externo.");
-            }
-        }, 1500);
     }
 }
 
-function ajustarVolumeGeral(tipo, id, valor) {
-    const volumeNormalizado = valor / 100;
-    
+function controlarAudio(tipo, iframeId, hintId, valor) {
     if (tipo === "youtube") {
-        if (ytPlayers[id] && typeof ytPlayers[id].setVolume === "function") {
-            ytPlayers[id].setVolume(valor);
+        if (ytPlayers[iframeId] && typeof ytPlayers[iframeId].setVolume === "function") {
+            ytPlayers[iframeId].setVolume(valor);
         }
     } else {
-        // Controla Kick e Twitch interceptando o ganho de áudio do elemento do navegador
-        if (audioContexts[id]) {
-            audioContexts[id].gain.value = volumeNormalizado * 2; // Permite uma compensação de ganho se necessário
-        }
+        // Exibe a dica interativa para Kick e Twitch quando o usuário mexe no slider
+        const dica = document.getElementById(hintId);
+        dica.style.display = 'block';
+        clearTimeout(dica.timer);
+        dica.timer = setTimeout(() => {
+            dica.style.display = 'none';
+        }, 3000);
     }
 }
 
@@ -161,7 +147,6 @@ function limparTudo() {
         document.getElementById('container').innerHTML = "";
         livesSalvas = [];
         ytPlayers = {};
-        audioContexts = {};
         localStorage.removeItem('mosaico_lives');
     }
 }
