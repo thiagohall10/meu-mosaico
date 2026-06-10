@@ -13,16 +13,18 @@
         .btn-clear { background: #ff4c4c; }
         .btn-clear:hover { background: #cc3333; }
         
-        #container { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 15px; padding: 15px; }
+        /* CORREÇÃO AQUI: Mudamos o tamanho mínimo de 400px para 550px para o player manter os botões visíveis */
+        #container { display: grid; grid-template-columns: repeat(auto-fit, minmax(550px, 1fr)); gap: 15px; padding: 15px; }
         .video-box { position: relative; background: #000; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .iframe-wrapper { position: relative; width: 100%; aspect-ratio: 16 / 9; }
         iframe { width: 100%; height: 100%; border: none; }
         .btn-fechar { position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; z-index: 10; font-weight: bold; }
         
         /* Controles inferiores de volume */
-        .volume-box { background: #141414; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; }
+        .volume-box { background: #141414; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; min-height: 20px; }
         .volume-box label { font-size: 11px; color: #aaa; font-weight: bold; }
         .vol-slider { flex-grow: 1; accent-color: #9146ff; cursor: pointer; height: 6px; }
+        .info-player { font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase; }
     </style>
     <!-- API para controle de volume do YouTube -->
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -74,7 +76,6 @@ function criarElementoLive(url, salvar) {
     }
     else if (url.includes("kick.com")) {
         tipo = "kick";
-        // Extrai corretamente o nome do canal removendo barras extras ou parâmetros
         let partes = url.split("kick.com/");
         if(partes.length > 1) {
             let canal = partes[1].split("/")[0].split("?")[0];
@@ -93,14 +94,25 @@ function criarElementoLive(url, salvar) {
     item.className = 'video-box';
     const iframeId = 'player-' + Math.random().toString(36).substr(2, 9);
 
+    let controleInferiorHtml = "";
+    if (tipo === "youtube") {
+        controleInferiorHtml = `
+            <label>VOLUME:</label>
+            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolume('${iframeId}', this.value)">
+        `;
+    } else {
+        controleInferiorHtml = `
+            <span class="info-player">Use a barra de áudio da própria ${tipo} logo acima</span>
+        `;
+    }
+
     item.innerHTML = `
         <div class="iframe-wrapper">
             <button class="btn-fechar" onclick="removerLive('${url}', this.parentElement.parentElement)">X</button>
             <iframe id="${iframeId}" src="${finalUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>
         </div>
         <div class="volume-box">
-            <label>VOLUME:</label>
-            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolume('${tipo}', '${iframeId}', this.value)">
+            ${controleInferiorHtml}
         </div>
     `;
     
@@ -117,8 +129,8 @@ function criarElementoLive(url, salvar) {
     }
 }
 
-function ajustarVolume(tipo, id, valor) {
-    if (tipo === "youtube" && ytPlayers[id] && typeof ytPlayers[id].setVolume === "function") {
+function ajustarVolume(id, valor) {
+    if (ytPlayers[id] && typeof ytPlayers[id].setVolume === "function") {
         ytPlayers[id].setVolume(valor);
     }
 }
