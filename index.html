@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Mosaico de Lives - Fácil</title>
+    <title>Mosaico de Lives - Som Total</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #0b0b0b; color: white; margin: 0; padding: 0; }
         .header { background: #1a1a1a; padding: 15px; display: flex; gap: 10px; position: sticky; top: 0; z-index: 999; border-bottom: 2px solid #333; }
@@ -13,20 +13,16 @@
         .btn-clear { background: #ff4c4c; }
         .btn-clear:hover { background: #cc3333; }
         
-        /* O SEGREDO ESTÁ AQUI: Aumentamos o tamanho mínimo para garantir espaço para os botões do player */
-        #container { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 15px; padding: 15px; }
+        #container { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 15px; padding: 15px; }
         .video-box { position: relative; background: #000; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #222; }
-        
-        /* Forçamos uma altura fixa e confortável para o player respirar */
-        .iframe-wrapper { position: relative; width: 100%; height: 340px; }
+        .iframe-wrapper { position: relative; width: 100%; aspect-ratio: 16 / 9; }
         iframe { width: 100%; height: 100%; border: none; }
         .btn-fechar { position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; z-index: 10; font-weight: bold; }
         
-        /* Barra de controle inferior apenas para o YouTube */
-        .volume-box { background: #141414; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; min-height: 20px; }
-        .volume-box label { font-size: 11px; color: #aaa; font-weight: bold; }
+        /* Barra de volume unificada para TODAS as plataformas */
+        .volume-box { background: #141414; padding: 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; }
+        .volume-box label { font-size: 11px; color: #aaa; font-weight: bold; letter-spacing: 1px; }
         .vol-slider { flex-grow: 1; accent-color: #9146ff; cursor: pointer; height: 6px; }
-        .info-player { font-size: 11px; color: #555; font-weight: bold; text-transform: uppercase; }
     </style>
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
@@ -43,6 +39,7 @@
 <script>
 let livesSalvas = JSON.parse(localStorage.getItem('mosaico_lives')) || [];
 let ytPlayers = {}; 
+let audioContexts = {}; // Guarda os gerenciadores de áudio da Kick e Twitch
 
 window.onload = function() {
     livesSalvas.forEach(url => criarElementoLive(url, false));
@@ -95,25 +92,14 @@ function criarElementoLive(url, salvar) {
     item.className = 'video-box';
     const iframeId = 'player-' + Math.random().toString(36).substr(2, 9);
 
-    let controleInferiorHtml = "";
-    if (tipo === "youtube") {
-        controleInferiorHtml = `
-            <label>VOLUME:</label>
-            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolume('${iframeId}', this.value)">
-        `;
-    } else {
-        controleInferiorHtml = `
-            <span class="info-player">Ajuste o som no ícone interno da ${tipo}</span>
-        `;
-    }
-
     item.innerHTML = `
         <div class="iframe-wrapper">
             <button class="btn-fechar" onclick="removerLive('${url}', this.parentElement.parentElement)">X</button>
             <iframe id="${iframeId}" src="${finalUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>
         </div>
         <div class="volume-box">
-            ${controleInferiorHtml}
+            <label>VOLUME:</label>
+            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolumeGeral('${tipo}', '${iframeId}', this.value)">
         </div>
     `;
     
@@ -127,12 +113,40 @@ function criarElementoLive(url, salvar) {
                 }
             });
         }, 1200);
+    } else {
+        // Inicializa o controle de áudio direto para o elemento de Iframe da Kick/Twitch
+        setTimeout(() => {
+            try {
+                const iframe = document.getElementById(iframeId);
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                const audioCtx = new AudioContext();
+                const source = audioCtx.createMediaElementSource(iframe);
+                const gainNode = audioCtx.createGain();
+                
+                gainNode.gain.value = 0.5; // Começa em 50%
+                source.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                audioContexts[iframeId] = gainNode;
+            } catch (e) {
+                console.log("Aguardando interação do usuário para ativar áudio externo.");
+            }
+        }, 1500);
     }
 }
 
-function ajustarVolume(id, valor) {
-    if (ytPlayers[id] && typeof ytPlayers[id].setVolume === "function") {
-        ytPlayers[id].setVolume(valor);
+function ajustarVolumeGeral(tipo, id, valor) {
+    const volumeNormalizado = valor / 100;
+    
+    if (tipo === "youtube") {
+        if (ytPlayers[id] && typeof ytPlayers[id].setVolume === "function") {
+            ytPlayers[id].setVolume(valor);
+        }
+    } else {
+        // Controla Kick e Twitch interceptando o ganho de áudio do elemento do navegador
+        if (audioContexts[id]) {
+            audioContexts[id].gain.value = volumeNormalizado * 2; // Permite uma compensação de ganho se necessário
+        }
     }
 }
 
@@ -147,6 +161,7 @@ function limparTudo() {
         document.getElementById('container').innerHTML = "";
         livesSalvas = [];
         ytPlayers = {};
+        audioContexts = {};
         localStorage.removeItem('mosaico_lives');
     }
 }
