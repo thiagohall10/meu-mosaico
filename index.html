@@ -42,7 +42,6 @@ let livesSalvas = JSON.parse(localStorage.getItem('mosaico_lives')) || [];
 let ytPlayers = {}; 
 
 window.onload = function() {
-    // Carrega os favoritos salvos automaticamente
     livesSalvas.forEach(url => criarElementoLive(url, false));
 };
 
@@ -75,9 +74,12 @@ function criarElementoLive(url, salvar) {
     }
     else if (url.includes("kick.com")) {
         tipo = "kick";
-        let canal = url.split("/").pop();
-        // Novo formato de URL de embed da Kick para evitar o erro de configuração
-        finalUrl = `https://kick.com/embed/${canal}`;
+        // Extrai corretamente o nome do canal removendo barras extras ou parâmetros
+        let partes = url.split("kick.com/");
+        if(partes.length > 1) {
+            let canal = partes[1].split("/")[0].split("?")[0];
+            finalUrl = `https://player.kick.com/${canal}?autoplay=true`;
+        }
     }
 
     if (!finalUrl) return;
@@ -119,7 +121,6 @@ function ajustarVolume(tipo, id, valor) {
     if (tipo === "youtube" && ytPlayers[id] && typeof ytPlayers[id].setVolume === "function") {
         ytPlayers[id].setVolume(valor);
     }
-    // Nota: Para Twitch e Kick, o controle individual fino é feito diretamente no ícone de som dentro do player de vídeo.
 }
 
 function removerLive(url, elemento) {
