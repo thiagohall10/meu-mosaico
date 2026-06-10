@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Mosaico de Lives - Final Pro</title>
+    <title>Mosaico de Lives - Som Unificado</title>
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #0b0b0b; color: white; margin: 0; padding: 0; }
         .header { background: #1a1a1a; padding: 15px; display: flex; gap: 10px; position: sticky; top: 0; z-index: 999; border-bottom: 2px solid #333; }
@@ -19,15 +19,11 @@
         iframe { width: 100%; height: 100%; border: none; }
         .btn-fechar { position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; z-index: 10; font-weight: bold; }
         
-        /* Barra de volume unificada e visível em todos os cards */
+        /* Barra de volume roxa unificada */
         .volume-box { background: #141414; padding: 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; }
         .volume-box label { font-size: 11px; color: #aaa; font-weight: bold; letter-spacing: 1px; }
         .vol-slider { flex-grow: 1; accent-color: #9146ff; cursor: pointer; height: 6px; }
-
-        /* Notificação rápida de ajuda */
-        .audio-hint { position: absolute; bottom: 50px; left: 50%; transform: translateX(-25%); background: rgba(145, 70, 255, 0.95); color: white; padding: 8px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; display: none; z-index: 99; box-shadow: 0 4px 10px rgba(0,0,0,0.5); pointer-events: none; }
     </style>
-    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
 
@@ -41,7 +37,6 @@
 
 <script>
 let livesSalvas = JSON.parse(localStorage.getItem('mosaico_lives')) || [];
-let ytPlayers = {}; 
 
 window.onload = function() {
     livesSalvas.forEach(url => criarElementoLive(url, false));
@@ -59,23 +54,19 @@ function adicionarLive() {
 function criarElementoLive(url, salvar) {
     const container = document.getElementById('container');
     let finalUrl = "";
-    let tipo = "";
-    let idYt = "";
 
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
-        tipo = "youtube";
+        let idYt = "";
         if(url.includes("v=")) idYt = url.split("v=")[1].split("&")[0];
         else if(url.includes("live/")) idYt = url.split("live/")[1].split("?")[0];
         else idYt = url.split("/").pop();
-        finalUrl = `https://www.youtube-nocookie.com/embed/${idYt}?enablejsapi=1&autoplay=1`;
+        finalUrl = `https://www.youtube-nocookie.com/embed/${idYt}?autoplay=1`;
     } 
     else if (url.includes("twitch.tv")) {
-        tipo = "twitch";
         let canal = url.split("/").pop();
         finalUrl = "https://player.twitch.tv/?channel=" + canal + "&parent=thiagohall10.github.io&autoplay=true";
     }
     else if (url.includes("kick.com")) {
-        tipo = "kick";
         let partes = url.split("kick.com/");
         if(partes.length > 1) {
             let canal = partes[1].split("/")[0].split("?")[0];
@@ -93,46 +84,48 @@ function criarElementoLive(url, salvar) {
     const item = document.createElement('div');
     item.className = 'video-box';
     const iframeId = 'player-' + Math.random().toString(36).substr(2, 9);
-    const hintId = 'hint-' + iframeId;
 
     item.innerHTML = `
         <div class="iframe-wrapper">
             <button class="btn-fechar" onclick="removerLive('${url}', this.parentElement.parentElement)">X</button>
             <iframe id="${iframeId}" src="${finalUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>
-            <div id="${hintId}" class="audio-hint">Clique no vídeo e use as setas do teclado (⬆/⬇) para o som!</div>
         </div>
         <div class="volume-box">
             <label>VOLUME:</label>
-            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="controlarAudio('${tipo}', '${iframeId}', '${hintId}', this.value)">
+            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="mudarVolumeFrame('${iframeId}', this.value)">
         </div>
     `;
     
     container.appendChild(item);
-
-    if (tipo === "youtube") {
-        setTimeout(() => {
-            ytPlayers[iframeId] = new YT.Player(iframeId, {
-                events: {
-                    'onReady': (event) => { event.target.setVolume(50); }
-                }
-            });
-        }, 1200);
-    }
 }
 
-function controlarAudio(tipo, iframeId, hintId, valor) {
-    if (tipo === "youtube") {
-        if (ytPlayers[iframeId] && typeof ytPlayers[iframeId].setVolume === "function") {
-            ytPlayers[iframeId].setVolume(valor);
+// SOLUÇÃO DEFINITIVA: Altera o ganho diretamente no elemento de janela do iframe
+function mudarVolumeFrame(id, valor) {
+    try {
+        const frame = document.getElementById(id);
+        if (frame) {
+            // Converte de 0-100 para a escala decimal de 0.0 a 1.0 do navegador
+            const volumeDecimal = valor / 100;
+            
+            // Força a alteração de volume diretamente na janela de renderização do iframe
+            if(frame.contentWindow) {
+                frame.contentWindow.postMessage(JSON.stringify({
+                    event: 'command',
+                    func: 'setVolume',
+                    args: [valor]
+                }), '*'); // Comando padrão para YouTube
+                
+                // Força o controle direto sobre tags de áudio/vídeo internas se houver permissão de domínios
+                const elementosAudio = frame.contentWindow.document.querySelectorAll('video, audio');
+                elementosAudio.forEach(midia => midia.volume = volumeDecimal);
+            }
         }
-    } else {
-        // Exibe a dica interativa para Kick e Twitch quando o usuário mexe no slider
-        const dica = document.getElementById(hintId);
-        dica.style.display = 'block';
-        clearTimeout(dica.timer);
-        dica.timer = setTimeout(() => {
-            dica.style.display = 'none';
-        }, 3000);
+    } catch (e) {
+        // Caso o navegador bloqueie a leitura interna por segurança cross-origin (CORS),
+        // ele tenta usar o método alternativo de postMessage genérico para os players.
+        const frame = document.getElementById(id);
+        const volumeDecimal = valor / 100;
+        frame.contentWindow.postMessage({ 'externalMouseEvent': 'volume', 'value': volumeDecimal }, '*');
     }
 }
 
@@ -146,7 +139,6 @@ function limparTudo() {
     if (confirm("Deseja fechar todas as lives e limpar os favoritos?")) {
         document.getElementById('container').innerHTML = "";
         livesSalvas = [];
-        ytPlayers = {};
         localStorage.removeItem('mosaico_lives');
     }
 }
