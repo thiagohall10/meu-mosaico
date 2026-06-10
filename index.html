@@ -13,20 +13,20 @@
         .btn-clear { background: #ff4c4c; }
         .btn-clear:hover { background: #cc3333; }
         
-        /* CORREÇÃO AQUI: Mudamos o tamanho mínimo de 400px para 550px para o player manter os botões visíveis */
         #container { display: grid; grid-template-columns: repeat(auto-fit, minmax(550px, 1fr)); gap: 15px; padding: 15px; }
-        .video-box { position: relative; background: #000; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .video-box { position: relative; background: #000; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.5); border: 1px solid #222; }
         .iframe-wrapper { position: relative; width: 100%; aspect-ratio: 16 / 9; }
         iframe { width: 100%; height: 100%; border: none; }
         .btn-fechar { position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; z-index: 10; font-weight: bold; }
         
-        /* Controles inferiores de volume */
-        .volume-box { background: #141414; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; min-height: 20px; }
+        /* Controles inferiores de volume e links de apoio */
+        .volume-box { background: #141414; padding: 10px 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; min-height: 24px; }
         .volume-box label { font-size: 11px; color: #aaa; font-weight: bold; }
         .vol-slider { flex-grow: 1; accent-color: #9146ff; cursor: pointer; height: 6px; }
-        .info-player { font-size: 11px; color: #666; font-weight: bold; text-transform: uppercase; }
+        .info-player { font-size: 11px; color: #888; font-weight: bold; text-transform: uppercase; }
+        .link-kick { color: #53fc18; text-decoration: none; font-weight: bold; border: 1px solid #53fc18; padding: 2px 8px; border-radius: 4px; font-size: 11px; transition: 0.2s; }
+        .link-kick:hover { background: #53fc18; color: #000; }
     </style>
-    <!-- API para controle de volume do YouTube -->
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
@@ -61,6 +61,7 @@ function criarElementoLive(url, salvar) {
     let finalUrl = "";
     let tipo = "";
     let idYt = "";
+    let canalKick = "";
 
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
         tipo = "youtube";
@@ -78,8 +79,8 @@ function criarElementoLive(url, salvar) {
         tipo = "kick";
         let partes = url.split("kick.com/");
         if(partes.length > 1) {
-            let canal = partes[1].split("/")[0].split("?")[0];
-            finalUrl = `https://player.kick.com/${canal}?autoplay=true`;
+            canalKick = partes[1].split("/")[0].split("?")[0];
+            finalUrl = `https://player.kick.com/${canalKick}?autoplay=true`;
         }
     }
 
@@ -100,9 +101,14 @@ function criarElementoLive(url, salvar) {
             <label>VOLUME:</label>
             <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolume('${iframeId}', this.value)">
         `;
+    } else if (tipo === "kick") {
+        controleInferiorHtml = `
+            <span class="info-player" style="margin-right: auto;">Controle sumiu?</span>
+            <a href="https://kick.com/${canalKick}" target="_blank" class="link-kick">ABRIR CANAL: ${canalKick.toUpperCase()}</a>
+        `;
     } else {
         controleInferiorHtml = `
-            <span class="info-player">Use a barra de áudio da própria ${tipo} logo acima</span>
+            <span class="info-player">Use os controles internos da Twitch acima</span>
         `;
     }
 
