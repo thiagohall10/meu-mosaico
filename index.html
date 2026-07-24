@@ -25,9 +25,12 @@
         /* Controles inferiores de volume */
         .volume-box { background: #141414; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #222; }
         .volume-box label { font-size: 11px; color: #aaa; font-weight: bold; }
-        .vol-slider { width: 60%; accent-color: #9146ff; cursor: pointer; height: 6px; }
-        .btn-foco { background: #333; color: #fff; border: 1px solid #555; padding: 4px 8px; font-size: 11px; border-radius: 4px; cursor: pointer; }
-        .btn-foco:hover { background: #555; }
+        .vol-slider { width: 50%; accent-color: #9146ff; cursor: pointer; height: 6px; }
+        .btn-mute-overlay { background: #9146ff; color: #fff; border: none; padding: 6px 12px; font-size: 11px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-mute-overlay:hover { background: #772ce8; }
+        
+        /* Camada transparente para repassar clique */
+        .click-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
     </style>
     <!-- API para controle de volume do YouTube -->
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -101,12 +104,13 @@ function criarElementoLive(url, salvar) {
         <div class="iframe-wrapper">
             <button class="btn-fechar" title="Fechar Live" onclick="removerLive('${url}', this.parentElement.parentElement)">X</button>
             <iframe id="${iframeId}" src="${finalUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+            <div class="click-overlay" id="overlay-${iframeId}"></div>
         </div>
         <div class="volume-box">
-            <label>VOLUME:</label>
+            <label>VOLUME / SOM:</label>
             ${tipo === 'youtube' 
                 ? `<input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolumeYT('${iframeId}', this.value)">`
-                : `<button class="btn-foco" onclick="focarPlayer('${iframeId}')">🎮 Activar Teclado (Mute 'M')</button>`
+                : `<button class="btn-mute-overlay" onclick="alternarSomNative('${iframeId}')">🔊 MUTE / DESMUTE</button>`
             }
         </div>
     `;
@@ -124,13 +128,27 @@ function criarElementoLive(url, salvar) {
     }
 }
 
-function focarPlayer(iframeId) {
-    const el = document.getElementById(iframeId);
-    if(el) {
-        el.focus();
-        // Clica no iframe para capturar o foco do teclado
-        el.contentWindow.focus();
-    }
+function alternarSomNative(iframeId) {
+    const iframe = document.getElementById(iframeId);
+    if (!iframe) return;
+
+    // Remove temporariamente a trava de cliques para simular interação no player
+    iframe.style.pointerEvents = "auto";
+
+    // Dispara o comando de focar e simular um clique na zona do botão de áudio nativo do player
+    const rect = iframe.getBoundingClientRect();
+    const x = rect.left + 35; // Posição do botão de áudio do player da Kick/Twitch
+    const y = rect.bottom - 35;
+
+    const evt = new MouseEvent('click', {
+        clientX: x,
+        clientY: y,
+        bubbles: true,
+        cancelable: true,
+        view: window
+    });
+
+    document.elementFromPoint(x, y)?.dispatchEvent(evt);
 }
 
 function ajustarVolumeYT(id, valor) {
