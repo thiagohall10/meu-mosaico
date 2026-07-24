@@ -18,21 +18,14 @@
         .iframe-wrapper { position: relative; width: 100%; aspect-ratio: 16 / 9; }
         iframe { width: 100%; height: 100%; border: none; }
         
-        /* Botão Fechar */
         .btn-fechar { position: absolute; top: 5px; right: 5px; z-index: 10; background: rgba(255, 0, 0, 0.85); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; }
         .btn-fechar:hover { background: #cc3333; }
         
-        /* Controles inferiores de volume */
         .volume-box { background: #141414; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #222; }
         .volume-box label { font-size: 11px; color: #aaa; font-weight: bold; }
-        .vol-slider { width: 50%; accent-color: #9146ff; cursor: pointer; height: 6px; }
-        .btn-mute-overlay { background: #9146ff; color: #fff; border: none; padding: 6px 12px; font-size: 11px; border-radius: 4px; cursor: pointer; font-weight: bold; }
-        .btn-mute-overlay:hover { background: #772ce8; }
-        
-        /* Camada transparente para repassar clique */
-        .click-overlay { position: absolute; bottom: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
+        .vol-slider { width: 70%; accent-color: #9146ff; cursor: pointer; height: 6px; }
+        .info-tag { font-size: 11px; color: #666; font-style: italic; }
     </style>
-    <!-- API para controle de volume do YouTube -->
     <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
@@ -104,13 +97,12 @@ function criarElementoLive(url, salvar) {
         <div class="iframe-wrapper">
             <button class="btn-fechar" title="Fechar Live" onclick="removerLive('${url}', this.parentElement.parentElement)">X</button>
             <iframe id="${iframeId}" src="${finalUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>
-            <div class="click-overlay" id="overlay-${iframeId}"></div>
         </div>
         <div class="volume-box">
-            <label>VOLUME / SOM:</label>
+            <label>VOLUME:</label>
             ${tipo === 'youtube' 
                 ? `<input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolumeYT('${iframeId}', this.value)">`
-                : `<button class="btn-mute-overlay" onclick="alternarSomNative('${iframeId}')">🔊 MUTE / DESMUTE</button>`
+                : `<span class="info-tag">Use o controle interno do player (${tipo.toUpperCase()})</span>`
             }
         </div>
     `;
@@ -126,29 +118,6 @@ function criarElementoLive(url, salvar) {
             });
         }, 1200);
     }
-}
-
-function alternarSomNative(iframeId) {
-    const iframe = document.getElementById(iframeId);
-    if (!iframe) return;
-
-    // Remove temporariamente a trava de cliques para simular interação no player
-    iframe.style.pointerEvents = "auto";
-
-    // Dispara o comando de focar e simular um clique na zona do botão de áudio nativo do player
-    const rect = iframe.getBoundingClientRect();
-    const x = rect.left + 35; // Posição do botão de áudio do player da Kick/Twitch
-    const y = rect.bottom - 35;
-
-    const evt = new MouseEvent('click', {
-        clientX: x,
-        clientY: y,
-        bubbles: true,
-        cancelable: true,
-        view: window
-    });
-
-    document.elementFromPoint(x, y)?.dispatchEvent(evt);
 }
 
 function ajustarVolumeYT(id, valor) {
