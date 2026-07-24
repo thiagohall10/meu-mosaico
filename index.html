@@ -18,18 +18,16 @@
         .iframe-wrapper { position: relative; width: 100%; aspect-ratio: 16 / 9; }
         iframe { width: 100%; height: 100%; border: none; }
         
-        /* Botões de Ação no topo de cada vídeo */
-        .btn-actions { position: absolute; top: 5px; right: 5px; display: flex; gap: 5px; z-index: 10; }
-        .btn-top { color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-        .btn-popout { background: rgba(145, 70, 255, 0.85); }
-        .btn-popout:hover { background: #772ce8; }
-        .btn-fechar { background: rgba(255, 0, 0, 0.85); }
+        /* Botão Fechar */
+        .btn-fechar { position: absolute; top: 5px; right: 5px; z-index: 10; background: rgba(255, 0, 0, 0.85); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; }
         .btn-fechar:hover { background: #cc3333; }
         
         /* Controles inferiores de volume */
-        .volume-box { background: #141414; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; }
+        .volume-box { background: #141414; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; border-top: 1px solid #222; }
         .volume-box label { font-size: 11px; color: #aaa; font-weight: bold; }
-        .vol-slider { flex-grow: 1; accent-color: #9146ff; cursor: pointer; height: 6px; }
+        .vol-slider { width: 60%; accent-color: #9146ff; cursor: pointer; height: 6px; }
+        .btn-foco { background: #333; color: #fff; border: 1px solid #555; padding: 4px 8px; font-size: 11px; border-radius: 4px; cursor: pointer; }
+        .btn-foco:hover { background: #555; }
     </style>
     <!-- API para controle de volume do YouTube -->
     <script src="https://www.youtube.com/iframe_api"></script>
@@ -65,10 +63,10 @@ function criarElementoLive(url, salvar) {
     const container = document.getElementById('container');
     let finalUrl = "";
     let tipo = "";
-    let idYt = "";
 
     if (url.includes("youtube.com") || url.includes("youtu.be")) {
         tipo = "youtube";
+        let idYt = "";
         if(url.includes("v=")) idYt = url.split("v=")[1].split("&")[0];
         else if(url.includes("live/")) idYt = url.split("live/")[1].split("?")[0];
         else idYt = url.split("/").pop();
@@ -101,15 +99,15 @@ function criarElementoLive(url, salvar) {
 
     item.innerHTML = `
         <div class="iframe-wrapper">
-            <div class="btn-actions">
-                <button class="btn-top btn-popout" title="Destacar Live em Janela Separável" onclick="destacarLive('${finalUrl}')">❐</button>
-                <button class="btn-top btn-fechar" title="Fechar Live" onclick="removerLive('${url}', this.parentElement.parentElement.parentElement)">X</button>
-            </div>
+            <button class="btn-fechar" title="Fechar Live" onclick="removerLive('${url}', this.parentElement.parentElement)">X</button>
             <iframe id="${iframeId}" src="${finalUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>
         </div>
         <div class="volume-box">
             <label>VOLUME:</label>
-            <input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolume('${tipo}', '${iframeId}', this.value)">
+            ${tipo === 'youtube' 
+                ? `<input type="range" class="vol-slider" min="0" max="100" value="50" oninput="ajustarVolumeYT('${iframeId}', this.value)">`
+                : `<button class="btn-foco" onclick="focarPlayer('${iframeId}')">🎮 Activar Teclado (Mute 'M')</button>`
+            }
         </div>
     `;
     
@@ -126,12 +124,17 @@ function criarElementoLive(url, salvar) {
     }
 }
 
-function destacarLive(url) {
-    window.open(url, '_blank', 'width=800,height=450,resizable=yes,scrollbars=no,status=no');
+function focarPlayer(iframeId) {
+    const el = document.getElementById(iframeId);
+    if(el) {
+        el.focus();
+        // Clica no iframe para capturar o foco do teclado
+        el.contentWindow.focus();
+    }
 }
 
-function ajustarVolume(tipo, id, valor) {
-    if (tipo === "youtube" && ytPlayers[id] && typeof ytPlayers[id].setVolume === "function") {
+function ajustarVolumeYT(id, valor) {
+    if (ytPlayers[id] && typeof ytPlayers[id].setVolume === "function") {
         ytPlayers[id].setVolume(valor);
     }
 }
