@@ -17,7 +17,14 @@
         .video-box { position: relative; background: #000; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         .iframe-wrapper { position: relative; width: 100%; aspect-ratio: 16 / 9; }
         iframe { width: 100%; height: 100%; border: none; }
-        .btn-fechar { position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8); color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; z-index: 10; font-weight: bold; }
+        
+        /* Botões de Ação no topo de cada vídeo */
+        .btn-actions { position: absolute; top: 5px; right: 5px; display: flex; gap: 5px; z-index: 10; }
+        .btn-top { color: white; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; font-weight: bold; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+        .btn-popout { background: rgba(145, 70, 255, 0.85); }
+        .btn-popout:hover { background: #772ce8; }
+        .btn-fechar { background: rgba(255, 0, 0, 0.85); }
+        .btn-fechar:hover { background: #cc3333; }
         
         /* Controles inferiores de volume */
         .volume-box { background: #141414; padding: 8px 12px; display: flex; align-items: center; gap: 10px; border-top: 1px solid #222; }
@@ -74,11 +81,10 @@ function criarElementoLive(url, salvar) {
     }
     else if (url.includes("kick.com")) {
         tipo = "kick";
-        // Extrai corretamente o nome do canal removendo barras extras ou parâmetros
         let partes = url.split("kick.com/");
         if(partes.length > 1) {
             let canal = partes[1].split("/")[0].split("?")[0];
-            finalUrl = `https://player.kick.com/${canal}?autoplay=true`;
+            finalUrl = `https://player.kick.com/${canal}?autoplay=true&origin=https://thiagohall10.github.io`;
         }
     }
 
@@ -95,7 +101,10 @@ function criarElementoLive(url, salvar) {
 
     item.innerHTML = `
         <div class="iframe-wrapper">
-            <button class="btn-fechar" onclick="removerLive('${url}', this.parentElement.parentElement)">X</button>
+            <div class="btn-actions">
+                <button class="btn-top btn-popout" title="Destacar Live em Janela Separável" onclick="destacarLive('${finalUrl}')">❐</button>
+                <button class="btn-top btn-fechar" title="Fechar Live" onclick="removerLive('${url}', this.parentElement.parentElement.parentElement)">X</button>
+            </div>
             <iframe id="${iframeId}" src="${finalUrl}" allowfullscreen allow="autoplay; encrypted-media"></iframe>
         </div>
         <div class="volume-box">
@@ -115,6 +124,10 @@ function criarElementoLive(url, salvar) {
             });
         }, 1200);
     }
+}
+
+function destacarLive(url) {
+    window.open(url, '_blank', 'width=800,height=450,resizable=yes,scrollbars=no,status=no');
 }
 
 function ajustarVolume(tipo, id, valor) {
