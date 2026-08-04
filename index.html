@@ -75,11 +75,8 @@ function criarElementoLive(url, salvar) {
     }
     else if (url.includes("kick.com")) {
         tipo = "kick";
-        let partes = url.split("kick.com/");
-        if(partes.length > 1) {
-            let canal = partes[1].split("/")[0].split("?")[0];
-            finalUrl = `https://player.kick.com/${canal}?autoplay=true&origin=https://thiagohall10.github.io`;
-        }
+        // TESTE: usa a URL direta da página completa da Kick
+        finalUrl = url;
     }
 
     if (!finalUrl) return;
