@@ -31,7 +31,7 @@
 <body>
 
 <div class="header">
-    <input type="text" id="urlInput" placeholder="Cole o link aqui (YouTube, Twitch ou Kick)...">
+    <input type="text" id="urlInput" placeholder="Cole o link aqui (YouTube, Twitch, Kick ou Cinefy)...">
     <button class="btn-add" onclick="adicionarLive()">ADICIONAR AO MOSAICO</button>
     <button class="btn-clear" onclick="limparTudo()">LIMPAR TUDO</button>
 </div>
@@ -80,6 +80,10 @@ function criarElementoLive(url, salvar) {
             let canal = partes[1].split("/")[0].split("?")[0];
             finalUrl = `https://player.kick.com/${canal}?autoplay=true&origin=https://thiagohall10.github.io`;
         }
+    }
+    else if (url.includes("cinefy.gg")) {
+        tipo = "cinefy";
+        finalUrl = url;
     }
 
     if (!finalUrl) return;
